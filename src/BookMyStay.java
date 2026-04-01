@@ -1,107 +1,131 @@
 import java.util.*;
 
-abstract class Room {
-
-    String roomType;
-    int beds;
-    double price;
-
-    Room(String roomType, int beds, double price) {
-        this.roomType = roomType;
-        this.beds = beds;
-        this.price = price;
-    }
-
-    void displayRoomDetails() {
-        System.out.println("Room Type: " + roomType);
-        System.out.println("Beds: " + beds);
-        System.out.println("Price per night: " + price);
+// Custom Exception
+class InvalidBookingException extends Exception {
+    public InvalidBookingException(String message) {
+        super(message);
     }
 }
 
-class SingleRoom extends Room {
-    SingleRoom() {
-        super("Single Room", 1, 1000);
-    }
-}
-
-class DoubleRoom extends Room {
-    DoubleRoom() {
-        super("Double Room", 2, 1800);
-    }
-}
-
-class SuiteRoom extends Room {
-    SuiteRoom() {
-        super("Suite Room", 3, 3000);
-    }
-}
-
-class RoomInventory {
-
-    private Map<String, Integer> inventory;
-
-    RoomInventory() {
-        inventory = new HashMap<>();
-        inventory.put("Single Room", 5);
-        inventory.put("Double Room", 3);
-        inventory.put("Suite Room", 2);
-    }
-
-    int getAvailability(String roomType) {
-        return inventory.getOrDefault(roomType, 0);
-    }
-}
-
+// Reservation class
 class Reservation {
+    private String bookingId;
+    private String customerName;
+    private String roomType;
+    private int nights;
 
-    String guestName;
-    String roomType;
-
-    Reservation(String guestName, String roomType) {
-        this.guestName = guestName;
+    public Reservation(String bookingId, String customerName, String roomType, int nights) {
+        this.bookingId = bookingId;
+        this.customerName = customerName;
         this.roomType = roomType;
+        this.nights = nights;
     }
 
-    void displayRequest() {
-        System.out.println("Guest: " + guestName + " requested " + roomType);
+    public String getRoomType() {
+        return roomType;
+    }
+
+    public int getNights() {
+        return nights;
+    }
+
+    @Override
+    public String toString() {
+        return "BookingID: " + bookingId +
+                ", Customer: " + customerName +
+                ", Room: " + roomType +
+                ", Nights: " + nights;
     }
 }
 
-class BookingRequestQueue {
+// Validator class
+class BookingValidator {
 
-    Queue<Reservation> requestQueue;
+    private static final Set<String> VALID_ROOM_TYPES =
+            new HashSet<>(Arrays.asList("Standard", "Deluxe", "Suite"));
 
-    BookingRequestQueue() {
-        requestQueue = new LinkedList<>();
-    }
+    // Validate booking input
+    public static void validate(Reservation reservation, Map<String, Integer> inventory)
+            throws InvalidBookingException {
 
-    void addRequest(Reservation reservation) {
-        requestQueue.offer(reservation);
-    }
+        // Validate room type
+        if (!VALID_ROOM_TYPES.contains(reservation.getRoomType())) {
+            throw new InvalidBookingException("Invalid room type selected.");
+        }
 
-    void displayRequests() {
-        for (Reservation r : requestQueue) {
-            r.displayRequest();
+        // Validate nights
+        if (reservation.getNights() <= 0) {
+            throw new InvalidBookingException("Number of nights must be greater than 0.");
+        }
+
+        // Check availability
+        int available = inventory.getOrDefault(reservation.getRoomType(), 0);
+
+        if (available <= 0) {
+            throw new InvalidBookingException("No rooms available for selected type.");
         }
     }
 }
 
-public class BookMyStay {
+// Booking Service
+class BookingService {
+
+    private Map<String, Integer> inventory;
+
+    public BookingService() {
+        inventory = new HashMap<>();
+        inventory.put("Standard", 2);
+        inventory.put("Deluxe", 1);
+        inventory.put("Suite", 1);
+    }
+
+    public void processBooking(Reservation reservation) {
+        try {
+            // Step 1: Validate (Fail Fast)
+            BookingValidator.validate(reservation, inventory);
+
+            // Step 2: Update inventory
+            String roomType = reservation.getRoomType();
+            inventory.put(roomType, inventory.get(roomType) - 1);
+
+            // Step 3: Success message
+            System.out.println("Booking Confirmed: " + reservation);
+
+        } catch (InvalidBookingException e) {
+            // Graceful failure
+            System.out.println("Booking Failed: " + e.getMessage());
+        }
+    }
+
+    public void showInventory() {
+        System.out.println("\nCurrent Inventory: " + inventory);
+    }
+}
+
+// Main Class
+public class UseCase9ErrorHandlingValidation {
 
     public static void main(String[] args) {
 
-        BookingRequestQueue bookingQueue = new BookingRequestQueue();
+        BookingService service = new BookingService();
 
-        bookingQueue.addRequest(new Reservation("Alice", "Single Room"));
-        bookingQueue.addRequest(new Reservation("Bob", "Double Room"));
-        bookingQueue.addRequest(new Reservation("Charlie", "Suite Room"));
+        // Valid booking
+        Reservation r1 = new Reservation("B201", "Amrutha", "Deluxe", 2);
 
-        System.out.println("Book My Stay - Hotel Booking System v5.0");
-        System.out.println();
-        System.out.println("Booking Requests in Queue");
-        System.out.println();
+        // Invalid room type
+        Reservation r2 = new Reservation("B202", "Rahul", "Premium", 1);
 
-        bookingQueue.displayRequests();
+        // Invalid nights
+        Reservation r3 = new Reservation("B203", "Sneha", "Standard", 0);
+
+        // Overbooking case
+        Reservation r4 = new Reservation("B204", "John", "Deluxe", 1);
+
+        service.processBooking(r1);
+        service.processBooking(r2);
+        service.processBooking(r3);
+        service.processBooking(r4); // should fail if Deluxe exhausted
+
+        service.showInventory();
     }
 }
