@@ -103,7 +103,7 @@ class BookingService {
 }
 
 // Main Class
-public class UseCase9ErrorHandlingValidation {
+public class BookMyStay {
 
     public static void main(String[] args) {
 
